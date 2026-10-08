@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user ID (auth UID)" },
+        "display_name": { "type": "string", "maxLength": 100, "description": "Display name" },
+        "email": { "type": "string", "maxLength": 150, "description": "User email" },
+        "avatar_url": { "type": "string", "maxLength": 500, "description": "Avatar image URL" },
+        "updated_at": { "type": "string", "description": "Last update ISO timestamp" }
+      },
+      "required": ["id", "display_name"]
+    },
+    "FamilyGroup": {
+      "title": "FamilyGroup",
+      "description": "Shared family workspace for financial management",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique family ID" },
+        "name": { "type": "string", "maxLength": 100, "description": "Family name" },
+        "created_by": { "type": "string", "description": "Owner user UID" },
+        "invite_code": { "type": "string", "maxLength": 32, "description": "Shareable invite code" },
+        "created_at": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "name", "created_by"]
+    },
+    "FamilyMember": {
+      "title": "FamilyMember",
+      "description": "Membership association between user and family",
+      "type": "object",
+      "properties": {
+        "family_id": { "type": "string", "description": "Family ID" },
+        "profile_id": { "type": "string", "description": "User UID" },
+        "role": { "type": "string", "enum": ["owner", "admin", "member"], "description": "Family member role" },
+        "display_name": { "type": "string", "maxLength": 100, "description": "Member name" },
+        "joined_at": { "type": "string", "description": "Date joined" }
+      },
+      "required": ["family_id", "profile_id", "role"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Transaction category (income or expense)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Category ID" },
+        "family_id": { "type": "string", "description": "Associated family ID" },
+        "name": { "type": "string", "maxLength": 80, "description": "Category label" },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Category flow type" },
+        "color": { "type": "string", "maxLength": 30, "description": "Hex color code or class" },
+        "icon": { "type": "string", "maxLength": 50, "description": "Lucide icon identifier" },
+        "usage_count": { "type": "number", "description": "Count of times used" }
+      },
+      "required": ["id", "family_id", "name", "type"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial income or expense transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Transaction ID" },
+        "family_id": { "type": "string", "description": "Associated family ID" },
+        "date": { "type": "string", "maxLength": 10, "description": "Date (YYYY-MM-DD)" },
+        "time": { "type": "string", "maxLength": 10, "description": "Time (HH:MM)" },
+        "description": { "type": "string", "maxLength": 200, "description": "Transaction description" },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Income or Expense" },
+        "amount": { "type": "number", "description": "Monetary value" },
+        "category_id": { "type": "string", "maxLength": 64, "description": "Category ID" },
+        "created_by": { "type": "string", "description": "User UID who created this record" },
+        "attachment_url": { "type": "string", "maxLength": 500, "description": "Receipt or proof URL" },
+        "created_at": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "family_id", "date", "description", "type", "amount", "category_id", "created_by"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Spending limit for a specific category and period",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Budget ID" },
+        "family_id": { "type": "string", "description": "Associated family ID" },
+        "category_id": { "type": "string", "maxLength": 64, "description": "Category ID" },
+        "limit_amount": { "type": "number", "description": "Budget threshold limit" },
+        "period": { "type": "string", "maxLength": 20, "description": "e.g. monthly, weekly" },
+        "created_at": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "family_id", "category_id", "limit_amount", "period"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Savings or financial target",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Goal ID" },
+        "family_id": { "type": "string", "description": "Associated family ID" },
+        "name": { "type": "string", "maxLength": 100, "description": "Goal name" },
+        "target_amount": { "type": "number", "description": "Target savings amount" },
+        "current_amount": { "type": "number", "description": "Current saved amount" },
+        "deadline": { "type": "string", "maxLength": 20, "description": "Target completion date" },
+        "icon": { "type": "string", "maxLength": 50, "description": "Icon identifier" },
+        "color": { "type": "string", "maxLength": 30, "description": "Color" },
+        "status": { "type": "string", "enum": ["active", "completed", "cancelled"], "description": "Goal state" },
+        "created_at": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "family_id", "name", "target_amount", "current_amount", "status"]
+    },
+    "PlanningItem": {
+      "title": "PlanningItem",
+      "description": "Scheduled or recurring future financial event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Item ID" },
+        "family_id": { "type": "string", "description": "Associated family ID" },
+        "description": { "type": "string", "maxLength": 200, "description": "Event description" },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Transaction type" },
+        "amount": { "type": "number", "description": "Expected amount" },
+        "category_id": { "type": "string", "maxLength": 64, "description": "Category ID" },
+        "expected_date": { "type": "string", "maxLength": 20, "description": "Planned due date" },
+        "recurring": { "type": "boolean", "description": "Whether this item recurs" },
+        "recurring_pattern": { "type": "string", "maxLength": 50, "description": "Frequency pattern" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled"], "description": "Status" },
+        "created_by": { "type": "string", "description": "User UID who created" },
+        "created_at": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["id", "family_id", "description", "type", "amount", "expected_date", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User personal profiles"
+    },
+    "/families/{familyId}": {
+      "schema": "FamilyGroup",
+      "description": "Family group documents"
+    },
+    "/families/{familyId}/members/{memberId}": {
+      "schema": "FamilyMember",
+      "description": "Members belonging to the family"
+    },
+    "/families/{familyId}/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Categories created or customized by the family"
+    },
+    "/families/{familyId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Financial income and expense records of the family"
+    },
+    "/families/{familyId}/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "Monthly budget targets by category"
+    },
+    "/families/{familyId}/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "Savings goals of the family"
+    },
+    "/families/{familyId}/planningItems/{itemId}": {
+      "schema": "PlanningItem",
+      "description": "Future scheduled planning events and bills"
+    }
+  }
+}

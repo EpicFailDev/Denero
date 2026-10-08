@@ -1,0 +1,6 @@
+{
+  "name": "OrganizAI",
+  "description": "Controle financeiro familiar inteligente e compartilhado para gerenciar receitas, despesas, metas, vendas e orçamentos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

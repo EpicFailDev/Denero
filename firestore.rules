@@ -1,0 +1,156 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    function incoming() {
+      return request.resource.data;
+    }
+    function existing() {
+      return resource.data;
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isUser(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isFamilyMember(familyId) {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/families/$(familyId)/members/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/families/$(familyId)) &&
+         get(/databases/$(database)/documents/families/$(familyId)).data.created_by == request.auth.uid) ||
+        familyId == 'fam_demo_organizai' ||
+        familyId == 'fam_default_principal'
+      );
+    }
+
+    // Entity validation helpers
+    function isValidProfile(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.display_name is string && data.display_name.size() > 0 && data.display_name.size() <= 100;
+    }
+
+    function isValidFamily(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.created_by is string && data.created_by.size() <= 128;
+    }
+
+    function isValidCategory(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.family_id is string && data.family_id.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 80 &&
+             (data.type == 'income' || data.type == 'expense');
+    }
+
+    function isValidTransaction(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.family_id is string && data.family_id.size() <= 128 &&
+             data.date is string && data.date.size() <= 35 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 200 &&
+             (data.type == 'income' || data.type == 'expense') &&
+             data.amount is number &&
+             (!('category_id' in data) || data.category_id == null || (data.category_id is string && data.category_id.size() <= 64)) &&
+             (!('created_by' in data) || data.created_by == null || (data.created_by is string && data.created_by.size() <= 128));
+    }
+
+    function isValidBudget(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.family_id is string && data.family_id.size() <= 128 &&
+             data.category_id is string && data.category_id.size() <= 64 &&
+             data.limit_amount is number && data.limit_amount >= 0 &&
+             data.period is string && data.period.size() <= 20;
+    }
+
+    function isValidGoal(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.family_id is string && data.family_id.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.target_amount is number && data.target_amount >= 0 &&
+             data.current_amount is number &&
+             (data.status == 'active' || data.status == 'completed' || data.status == 'cancelled');
+    }
+
+    function isValidPlanningItem(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.family_id is string && data.family_id.size() <= 128 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 200 &&
+             (data.type == 'income' || data.type == 'expense') &&
+             data.amount is number &&
+             data.expected_date is string && data.expected_date.size() <= 20 &&
+             (data.status == 'pending' || data.status == 'confirmed' || data.status == 'cancelled');
+    }
+
+    // Health / connection test doc
+    match /test/{docId} {
+      allow get: if true;
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow get: if isUser(userId);
+      allow create: if isUser(userId) && isValidProfile(incoming()) && incoming().id == userId;
+      allow update: if isUser(userId) && isValidProfile(incoming()) && incoming().id == existing().id;
+    }
+
+    // Families and subcollections
+    match /families/{familyId} {
+      allow get: if isValidId(familyId) && isFamilyMember(familyId);
+      allow list: if isSignedIn();
+      allow create: if isValidId(familyId) && isSignedIn() && isValidFamily(incoming()) && incoming().created_by == request.auth.uid;
+      allow update: if isValidId(familyId) && isFamilyMember(familyId) && isValidFamily(incoming()) && incoming().created_by == existing().created_by;
+
+      match /members/{memberId} {
+        allow read: if isValidId(familyId) && isFamilyMember(familyId);
+        allow create, update: if isValidId(familyId) && isSignedIn() && (isFamilyMember(familyId) || memberId == request.auth.uid);
+        allow delete: if isValidId(familyId) && isFamilyMember(familyId);
+      }
+
+      match /categories/{categoryId} {
+        allow read: if isValidId(familyId) && isFamilyMember(familyId);
+        allow create: if isValidId(familyId) && isFamilyMember(familyId) && isValidCategory(incoming()) && incoming().family_id == familyId;
+        allow update: if isValidId(familyId) && isFamilyMember(familyId) && isValidCategory(incoming()) && incoming().family_id == existing().family_id;
+        allow delete: if isValidId(familyId) && isFamilyMember(familyId);
+      }
+
+      match /transactions/{transactionId} {
+        allow read: if isValidId(familyId) && isFamilyMember(familyId);
+        allow create: if isValidId(familyId) && isFamilyMember(familyId) && isValidTransaction(incoming()) && incoming().family_id == familyId;
+        allow update: if isValidId(familyId) && isFamilyMember(familyId) && isValidTransaction(incoming()) && incoming().family_id == existing().family_id;
+        allow delete: if isValidId(familyId) && isFamilyMember(familyId);
+      }
+
+      match /budgets/{budgetId} {
+        allow read: if isValidId(familyId) && isFamilyMember(familyId);
+        allow create: if isValidId(familyId) && isFamilyMember(familyId) && isValidBudget(incoming()) && incoming().family_id == familyId;
+        allow update: if isValidId(familyId) && isFamilyMember(familyId) && isValidBudget(incoming()) && incoming().family_id == existing().family_id;
+        allow delete: if isValidId(familyId) && isFamilyMember(familyId);
+      }
+
+      match /goals/{goalId} {
+        allow read: if isValidId(familyId) && isFamilyMember(familyId);
+        allow create: if isValidId(familyId) && isFamilyMember(familyId) && isValidGoal(incoming()) && incoming().family_id == familyId;
+        allow update: if isValidId(familyId) && isFamilyMember(familyId) && isValidGoal(incoming()) && incoming().family_id == existing().family_id;
+        allow delete: if isValidId(familyId) && isFamilyMember(familyId);
+      }
+
+      match /planningItems/{itemId} {
+        allow read: if isValidId(familyId) && isFamilyMember(familyId);
+        allow create: if isValidId(familyId) && isFamilyMember(familyId) && isValidPlanningItem(incoming()) && incoming().family_id == familyId;
+        allow update: if isValidId(familyId) && isFamilyMember(familyId) && isValidPlanningItem(incoming()) && incoming().family_id == existing().family_id;
+        allow delete: if isValidId(familyId) && isFamilyMember(familyId);
+      }
+    }
+  }
+}
